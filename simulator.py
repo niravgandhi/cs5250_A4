@@ -60,7 +60,7 @@ def FCFS_scheduling(process_list):
 #Output_2 : Average Waiting Time
 def RR_scheduling(process_list, time_quantum ):
     current_time = 0
-    first_task = Task(process_list[0].id, process_list[0].burst_time)
+    first_task = Task(process_list[0].id, process_list[0].burst_time, process_list[0].arrive_time)
     task_queue = [first_task]
     moreProcesses = True
     schedule = []
@@ -107,7 +107,7 @@ def add_to_process_list(new_processes, current_task_queue):
                 task.cpu_time_requested += process.burst_time
                 task.cpu_time_left += process.burst_time
         if not found:
-            current_task_queue.append(Task(process.id, process.burst_time))
+            current_task_queue.append(Task(process.id, process.burst_time, process.arrive_time))
 
 def get_new_processes(process_list, fromTime, toTime):
     new_processes = []
@@ -122,7 +122,7 @@ def get_new_processes(process_list, fromTime, toTime):
 def SRTF_scheduling(process_list):
     current_time = 0
     first_process = process_list[0]
-    first_task = Task(first_process.id, first_process.burst_time)
+    first_task = Task(first_process.id, first_process.burst_time, first_process.arrive_time)
     task_list = [first_task]
     current_task = first_task
     more_processes = True
@@ -192,7 +192,7 @@ def SJF_scheduling(process_list, alpha):
     wt = [0,0,0,0]
     schedule = []
     first_process = process_list[0]
-    first_task = Task(first_process.id, first_process.burst_time)
+    first_task = Task(first_process.id, first_process.burst_time, first_process.arrive_time)
     task_list = [first_task]
     current_time = 0
     current_task = first_task
@@ -203,6 +203,7 @@ def SJF_scheduling(process_list, alpha):
     numTasks = 0
     while moreProcesses or len(task_list) > 0:
         if current_task != None:
+            schedule.append((current_time, current_task.process_id))
             numTasks += 1
             current_time += current_task.cpu_time_requested
             current_task.cpu_time_left = 0
@@ -215,18 +216,22 @@ def SJF_scheduling(process_list, alpha):
                     current_task_position = i
             task_list.__delitem__(current_task_position)
 
-            schedule.append((current_time, current_task.process_id))
+            # Increment waiting times for all the tasks that are in the task_list
+            for task in task_list:
+                if task != current_task:
+                    wt[task.process_id] += time_spent_doing_task
+                    print 'Increasing wait time of process ' + str(task.process_id) + ' by time_spend_doing_task:' + str(time_spent_doing_task)
             current_task = None
         else:
+            # No need to increase wait times as there are no elements in the task queue
             current_time += 1
             time_spent_doing_task = 1
-
-        for task in task_list:
 
         new_processes, moreProcesses = get_new_processes(process_list, current_time - time_spent_doing_task, current_time)
 
         for process in new_processes:
             if process.arrive_time < current_time:
+                print 'Increasing wait time of process ' + str(process.id) + ' by ' + str(current_time - process.arrive_time)
                 wt[process.id] += current_time - process.arrive_time
 
         add_to_process_list(new_processes, task_list)
@@ -238,7 +243,11 @@ def SJF_scheduling(process_list, alpha):
                     prediction.add_burst_time(task.process_id, shortest_job[1])
                     current_task = task
 
-    return (schedule,0.0)
+    average_wait_time = 0
+    for wait_time in wt:
+        average_wait_time += wait_time
+    average_wait_time /= 4
+    return (schedule,average_wait_time)
 
 def get_shortest_job(task_list, history, prediction, alpha):
     shortest_job_time = (-1, 100000000)
