@@ -63,7 +63,8 @@ def RR_scheduling(process_list, time_quantum ):
     first_task = Task(process_list[0].id, process_list[0].burst_time, process_list[0].arrive_time)
     task_queue = [first_task]
     moreProcesses = True
-    schedule = []
+    schedule = [(0, first_task.process_id)]
+    wt = [0,0,0,0]
 
     while len(task_queue) != 0 or moreProcesses:
         time_spent = 0
@@ -78,25 +79,37 @@ def RR_scheduling(process_list, time_quantum ):
                 time_spent = head_task.cpu_time_left
                 head_task.cpu_time_left = 0
 
+            for task in task_queue:
+                if task.process_id != head_task.process_id:
+                    wt[task.process_id] += time_spent
             # pop from head
             task_queue = task_queue[1:]
 
             if head_task.cpu_time_left > 0:
                 task_queue.append(head_task)
 
-            #TODO: Append to schedule only when there is a change in task
-            schedule.append((current_time, head_task.process_id))
+            # Prevent redundant addition to schedule
+            if head_task.process_id != schedule[len(schedule) - 1][1]:
+                schedule.append((current_time, head_task.process_id))
         else:
             time_spent = 1
 
         current_time += time_spent
 
         new_processes, moreProcesses = get_new_processes(process_list, current_time - time_spent, current_time)
+        for process in new_processes:
+            if process.arrive_time < current_time:
+                wt[process.id] += current_time - process.arrive_time
+
         # add new tasks
         add_to_process_list(new_processes, task_queue)
 
-    #TODO: Add Waiting time
-    return (schedule, 0)
+    average_wait_time = 0
+    for wait_time in wt:
+        average_wait_time += wait_time
+
+    average_wait_time /= 4
+    return (schedule, average_wait_time)
 
 def add_to_process_list(new_processes, current_task_queue):
     for process in new_processes:
@@ -126,7 +139,7 @@ def SRTF_scheduling(process_list):
     task_list = [first_task]
     current_task = first_task
     more_processes = True
-
+    wt = [0,0,0,0]
     schedule = [(0, first_task.process_id)]
 
     while more_processes or len(task_list) > 0:
@@ -143,6 +156,11 @@ def SRTF_scheduling(process_list):
                 schedule.append((current_time, current_task.process_id))
 
             current_task.cpu_time_left -= 1
+
+            for task in task_list:
+                if task != current_task:
+                    wt[task.process_id] += 1
+
             if current_task.cpu_time_left == 0:
                 # Task is done. delete task from task_list
                 task_index = -1
@@ -172,7 +190,13 @@ def SRTF_scheduling(process_list):
             current_task = task_with_shortest_time
             if current_task != None:
                 schedule.append((current_time, current_task.process_id))
-    return (schedule, 0.0)
+
+    average_wait_time = 0
+    for wait_time in wt:
+        average_wait_time += wait_time
+
+    average_wait_time /= 4
+    return (schedule, average_wait_time)
 
 def SJF_scheduling(process_list, alpha):
     class BurstTimeHistory:
@@ -220,7 +244,6 @@ def SJF_scheduling(process_list, alpha):
             for task in task_list:
                 if task != current_task:
                     wt[task.process_id] += time_spent_doing_task
-                    print 'Increasing wait time of process ' + str(task.process_id) + ' by time_spend_doing_task:' + str(time_spent_doing_task)
             current_task = None
         else:
             # No need to increase wait times as there are no elements in the task queue
@@ -231,7 +254,6 @@ def SJF_scheduling(process_list, alpha):
 
         for process in new_processes:
             if process.arrive_time < current_time:
-                print 'Increasing wait time of process ' + str(process.id) + ' by ' + str(current_time - process.arrive_time)
                 wt[process.id] += current_time - process.arrive_time
 
         add_to_process_list(new_processes, task_list)
