@@ -1,2 +1,17 @@
-to be completed, scheduling SJF without using information from process.burst_time
+(9, 0)
+(17, 1)
+(19, 2)
+(21, 3)
+(35, 3)
+(41, 2)
+(43, 1)
+(51, 0)
+(67, 2)
+(70, 1)
+(78, 3)
+(80, 0)
+(100, 1)
+(110, 0)
+(119, 2)
+(127, 3)
 average waiting time 0.00 

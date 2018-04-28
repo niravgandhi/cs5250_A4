@@ -19,7 +19,6 @@ Revision 2:
     Thanks Lee Wei Ping for trying and pointing out the difficulty & ambiguity with future_prediction SRTF.
 '''
 import sys
-import math
 
 input_file = 'input.txt'
 
@@ -34,8 +33,9 @@ class Process:
         return ('[id %d : arrive_time %d,  burst_time %d]'%(self.id, self.arrive_time, self.burst_time))
 
 class Task:
-    def __init__(self, process_id, cpu_time_requested):
+    def __init__(self, process_id, cpu_time_requested, arrive_time):
             self.process_id = process_id
+            self.arrive_time = arrive_time
             self.cpu_time_requested = cpu_time_requested
             self.cpu_time_left = cpu_time_requested
     def __repr__(self):
@@ -175,8 +175,90 @@ def SRTF_scheduling(process_list):
     return (schedule, 0.0)
 
 def SJF_scheduling(process_list, alpha):
+    class BurstTimeHistory:
+        def __init__(self):
+            self.burst_times = []
 
-    return (["to be completed, scheduling SJF without using information from process.burst_time"],0.0)
+        def add_burst_time(self, process_id, burst_time):
+            if len(self.burst_times) < process_id + 1:
+                self.burst_times.append(burst_time)
+            else:
+                self.burst_times[process_id] = burst_time
+
+        def get_last_burst_time(self, process_id):
+            if len(self.burst_times) < process_id + 1:
+                return -1
+            return self.burst_times[process_id]
+    wt = [0,0,0,0]
+    schedule = []
+    first_process = process_list[0]
+    first_task = Task(first_process.id, first_process.burst_time)
+    task_list = [first_task]
+    current_time = 0
+    current_task = first_task
+    history = BurstTimeHistory()
+    prediction = BurstTimeHistory()
+    prediction.add_burst_time(current_task.process_id, 5)
+    moreProcesses = True
+    numTasks = 0
+    while moreProcesses or len(task_list) > 0:
+        if current_task != None:
+            numTasks += 1
+            current_time += current_task.cpu_time_requested
+            current_task.cpu_time_left = 0
+            time_spent_doing_task = current_task.cpu_time_requested
+            history.add_burst_time(current_task.process_id, current_task.cpu_time_requested)
+
+            current_task_position = -1
+            for i, task in enumerate(task_list):
+                if current_task.process_id == task.process_id:
+                    current_task_position = i
+            task_list.__delitem__(current_task_position)
+
+            schedule.append((current_time, current_task.process_id))
+            current_task = None
+        else:
+            current_time += 1
+            time_spent_doing_task = 1
+
+        for task in task_list:
+
+        new_processes, moreProcesses = get_new_processes(process_list, current_time - time_spent_doing_task, current_time)
+
+        for process in new_processes:
+            if process.arrive_time < current_time:
+                wt[process.id] += current_time - process.arrive_time
+
+        add_to_process_list(new_processes, task_list)
+        shortest_job = get_shortest_job(task_list, history, prediction, alpha)
+
+        if shortest_job[0] != -1:
+            for task in task_list:
+                if task.process_id == shortest_job[0]:
+                    prediction.add_burst_time(task.process_id, shortest_job[1])
+                    current_task = task
+
+    return (schedule,0.0)
+
+def get_shortest_job(task_list, history, prediction, alpha):
+    shortest_job_time = (-1, 100000000)
+
+    for task in task_list:
+        tn = history.get_last_burst_time(task.process_id)
+        if tn == -1:
+            #task has never been executed
+            toenplus1 = 5
+        else:
+            toen = prediction.get_last_burst_time(task.process_id)
+            if toen == -1:
+                print 'Shouldnt happen'
+
+            toenplus1 = alpha * tn + (1 - alpha) * toen
+
+        if toenplus1 < shortest_job_time[1]:
+            shortest_job_time = (task.process_id, toenplus1)
+
+    return shortest_job_time
 
 def read_input():
     result = []
@@ -188,6 +270,7 @@ def read_input():
                 exit()
             result.append(Process(int(array[0]),int(array[1]),int(array[2])))
     return result
+
 def write_output(file_name, schedule, avg_waiting_time):
     with open(file_name,'w') as f:
         for item in schedule:
